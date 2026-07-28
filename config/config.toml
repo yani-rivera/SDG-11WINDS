@@ -1,0 +1,119 @@
+####################################################################
+# sdg-11wind configuration
+#
+# Precedence, highest first:
+#   1. command-line argument   --days 14
+#   2. environment variable    (credentials only: CDSAPI_KEY etc.)
+#   3. this file
+#   4. the default coded into the script
+#
+# Every key is a long option name with dashes as underscores.
+# `--particle-age 30` on the command line is `particle_age = 30` here.
+# Run any command with --show-config to see what was picked up.
+#
+# Credentials do NOT belong here — this file is committed.
+# Use conda env vars or .env for CDSAPI_KEY.
+####################################################################
+
+# Applies to every command that accepts it.
+data_dir = "data"
+
+
+# ------------------------------------------------------------------
+# simet_pull.py — retrieve series from the SIMET dashboard
+# ------------------------------------------------------------------
+[pull]
+base_url = "https://estaciones.simet.amdc.hn"
+token    = "35e1646395644bad8016ef58adace500"
+
+# 900000 ms = 15 min, matching the stations' native cadence.
+# The datasource currently ignores this, but it is sent regardless.
+interval   = 900000
+max_points = 100000
+
+
+# ------------------------------------------------------------------
+# simet_collect.py — incremental archive builder
+# ------------------------------------------------------------------
+[collect]
+# Overlapping window: a run that fails heals on the next success,
+# as long as the outage is shorter than this.
+days = 7
+
+dir_panel   = 3          # timeseries — wind direction
+speed_panel = 2          # canvas — wind speed km/h
+stations    = "simet_stations.csv"
+out         = "simet_archive.csv"
+
+gap_hours = 2.0          # a hole this long counts as a gap
+retries   = 3            # attempts per request before giving up
+interval  = 900000
+
+
+# ------------------------------------------------------------------
+# simet_join.py — wide to tidy, attach coordinates
+# ------------------------------------------------------------------
+[join]
+stations = "simet_stations.csv"
+out      = "simet_tidy.csv"
+
+
+# ------------------------------------------------------------------
+# hn_wind_map.py — observed-wind arrow map
+# ------------------------------------------------------------------
+[windmap]
+freq   = "15min"         # resampling interval: h, 30min, 15min
+weight = 4.0             # arrow stroke width; city scale wants this thick
+out    = "hn_wind_map.html"
+# arrow_deg = 0.03       # uncomment to override the automatic scaling
+
+
+# ------------------------------------------------------------------
+# hn_era5_wind.py fetch — reanalysis download
+# ------------------------------------------------------------------
+[era5_fetch]
+# Bounding box in CDS order: North, West, South, East.
+# Honduras with a margin of ocean so particles enter from off-map.
+area = [18.5, -91.0, 11.5, -82.0]
+out  = "era5_honduras.nc"
+land = false             # true switches to ERA5-Land at 0.1 deg
+
+
+# ------------------------------------------------------------------
+# hn_era5_wind.py map — particle flow map
+# ------------------------------------------------------------------
+[era5_map]
+nc  = "era5_honduras.nc"
+out = "hn_era5_map.html"
+
+particle_age     = 45    # frames a particle lives; lower = shorter trails
+particle_density = 0.002 # particles per pixel; lower = sparser
+velocity_scale   = 0.01  # distance travelled per frame
+line_width       = 2.5   # particle stroke width
+max_frames       = 240   # thin longer windows to keep the file usable
+
+
+# ------------------------------------------------------------------
+# hn_era5_wind.py terrain — model elevation vs real ground
+# ------------------------------------------------------------------
+[era5_terrain]
+stations = "simet_tidy.csv"
+nc       = "era5_geopotential.nc"
+out      = "era5_terrain.csv"
+
+
+# ------------------------------------------------------------------
+# hn_era5_wind.py validate — reanalysis against observations
+# ------------------------------------------------------------------
+[era5_validate]
+nc  = "era5_honduras.nc"
+out = "era5_validation.csv"
+
+
+# ------------------------------------------------------------------
+# make_report.py — the PDF
+# ------------------------------------------------------------------
+[report]
+obs     = "simet_tidy.csv"
+terrain = "era5_terrain.csv"
+out     = "the-name-of-the-wind.pdf"
