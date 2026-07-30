@@ -1,8 +1,7 @@
 # hn_era5_wind
 
 Download ERA5 reanalysis winds for any bounding box, render them as an
-animated particle-flow map, and compare the model's terrain and winds against
-ground observations.
+animated particle-flow map.
 
 Nothing here is specific to Honduras despite the filename — the bounding box
 is an argument, and the map centres and scales itself on whatever you fetch.
